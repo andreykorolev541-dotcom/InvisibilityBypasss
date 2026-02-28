@@ -14,23 +14,24 @@ import org.lwjgl.glfw.GLFW;
 @Mod("seethrough")
 public class InvisMod {
     private static boolean isEnabled = true;
-    private static int toggleKey = GLFW.GLFW_KEY_V; // По умолчанию клавиша V
+    private static int toggleKey = GLFW.GLFW_KEY_V;
 
     public InvisMod() {
         MinecraftForge.EVENT_BUS.register(this);
     }
 
-    // Логика отображения невидимок
     @SubscribeEvent
     public void onRenderPlayer(RenderPlayerEvent.Pre event) {
         if (!isEnabled) return;
         PlayerEntity player = event.getPlayer();
+        // В 1.16.5 для надежности лучше временно отключать флаг невидимости 
+        // и разрешать рендер имени
         if (player.isInvisible()) {
             player.setInvisible(false);
+            event.getRenderer().getFont().drawInBatch(" ", 0, 0, 0, false, event.getMatrixStack().last().pose(), event.getBuffers(), false, 0, event.getLight());
         }
     }
 
-    // Обработка нажатия клавиши
     @SubscribeEvent
     public void onKeyInput(InputEvent.KeyInputEvent event) {
         if (Minecraft.getInstance().screen == null && event.getKey() == toggleKey && event.getAction() == GLFW.GLFW_PRESS) {
@@ -39,20 +40,20 @@ public class InvisMod {
         }
     }
 
-    // Команда для бинда клавиши в чате
     @SubscribeEvent
     public void onClientChat(ClientChatEvent event) {
         String msg = event.getMessage();
         if (msg.startsWith(".bind inviz ")) {
-            event.setCanceled(true); // Сообщение не уйдет на сервер (скрытность)
-            String keyName = msg.replace(".bind inviz ", "").toUpperCase();
-            
-            // Простая логика: берем первую букву (например, 'X' -> GLFW_KEY_X)
-            if (keyName.length() == 1) {
-                toggleKey = keyName.charAt(0); 
-                statusMessage("§6Bind updated! §fNew key: §e" + keyName);
-            } else {
-                statusMessage("§cError! Use single letter (e.g. .bind inviz X)");
+            event.setCanceled(true);
+            try {
+                String keyName = msg.replace(".bind inviz ", "").toUpperCase();
+                // Для клавиш-букв (A-Z)
+                if (keyName.length() == 1) {
+                    toggleKey = (int) keyName.charAt(0);
+                    statusMessage("§6Bind updated! §fNew key: §e" + keyName);
+                }
+            } catch (Exception e) {
+                statusMessage("§cError! Use: .bind inviz X");
             }
         }
     }
